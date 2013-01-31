@@ -11,6 +11,7 @@ namespace Search\Server\Elastica;
 
 use Elastica_Client;
 use Elastica_Document;
+use Elastica_Search;
 use Search\Framework\Event\SearchCollectionEvent;
 use Search\Framework\SearchEvents;
 use Search\Framework\SearchServerAbstract;
@@ -194,6 +195,17 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     {
         $this->_client->addDocuments($this->_documents);
         $this->_client->getIndex($this->_activeIndex)->refresh();
+    }
+
+    /**
+     * Implements Search::Server::SearchServerAbstract::search().
+     *
+     * @return Elastica_ResultSet
+     */
+    public function search($keywords, array $options = array())
+    {
+        $query = new Elastica_Search($this->_client);
+        return $query->search($keywords);
     }
 
     /**
