@@ -13,7 +13,7 @@
     ],
     "require": {
         "cpliakas/search-framework": "dev-master",
-        "rufin/Elastica": "0.19.*"
+        "ruflin/Elastica": "v0.19.8.0"
     },
     "autoload": {
         "psr-0": {
