@@ -12,7 +12,9 @@ namespace Search\Server\Elastica;
 use Elastica_Client;
 use Elastica_Document;
 use Elastica_Search;
+use Elastica_Type_Mapping;
 use Search\Framework\Event\SearchCollectionEvent;
+use Search\Framework\SearchCollectionAbstract;
 use Search\Framework\SearchEvents;
 use Search\Framework\SearchServerAbstract;
 use Search\Framework\SearchIndexDocument;
@@ -150,6 +152,49 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     }
 
     /**
+     * Implements Search::Server::SearchServerAbstract::createIndex().
+     */
+    public function createIndex($name, array $options = array())
+    {
+        // Create the index.
+        $options += array(
+            'number_of_shards' => 4,
+            'number_of_replicas' => 1,
+        );
+        $index = $this->_client->getIndex($name);
+        $index->create($options, true);
+
+        // Put the mappings for each collection.
+        foreach ($this->_collections as $collection) {
+            $schema = $collection->getSchema();
+
+            $mapping = new Elastica_Type_Mapping();
+            $type = $index->getType($collection->getType());
+            $mapping->setType($type);
+
+            $properties = array();
+            foreach ($schema as $field_id => $field) {
+                $field_name = $field->getName();
+
+                // @todo Implement types.
+                $properties[$field_name]['type'] = 'string';
+
+                if (!$field->isIndexed()) {
+                    $properties[$field_name]['index'] = 'no';
+                }
+
+                if (!$field->isStored()) {
+                    $properties[$field_name]['store'] = true;
+                }
+            }
+
+            $mapping->setProperties($properties);
+            $mapping->send();
+        }
+
+    }
+
+    /**
      * Listener for the SearchEvents::COLLECTION_PRE_INDEX event.
      *
      * @param SearchCollectionEvent $event
@@ -162,9 +207,10 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     /**
      * Implements Search::Server::SearchServerAbstract::indexDocument().
      *
+     * @param SearchCollectionAbstract $collection
      * @param SolariumIndexDocument $document
      */
-    public function indexDocument(SearchIndexDocument $document)
+    public function indexDocument(SearchCollectionAbstract $collection, SearchIndexDocument $document)
     {
         $index_doc = array();
 
@@ -177,10 +223,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
             $index_doc[$name] = $normalized_value;
         }
 
-        // @todo Figure out how to get unique field from schema.
-        $id = uniqid();
-
-        $native_doc = new Elastica_Document($id, $index_doc);
+        $native_doc = new Elastica_Document(null, $index_doc);
         $native_doc->setIndex($this->_activeIndex);
         $native_doc->setType('item');
         $this->_documents[] = $native_doc;
@@ -216,13 +259,5 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     public function delete()
     {
         $this->_client->getIndex($this->_activeIndex)->delete();
-    }
-
-    /**
-     * Pass all other method calls directly to the Solarium client.
-     */
-    public function __call($method, $args)
-    {
-        return call_user_func_array(array($this->_client, $method), $args);
     }
 }
