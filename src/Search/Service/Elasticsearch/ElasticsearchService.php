@@ -23,7 +23,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 /**
  * Provides an Elasticsearch service by using the Elastica library.
  */
-class ElasticsearchSearchService extends SearchServiceAbstract implements EventSubscriberInterface
+class ElasticsearchService extends SearchServiceAbstract implements EventSubscriberInterface
 {
     /**
      * The Elastica client interacting with the server.
@@ -87,7 +87,6 @@ class ElasticsearchSearchService extends SearchServiceAbstract implements EventS
     public static function getSubscribedEvents()
     {
         return array(
-            SearchEvents::COLLECTION_PRE_INDEX => array('preIndexCollection'),
             SearchEvents::COLLECTION_POST_INDEX => array('postIndexCollection'),
         );
     }
@@ -98,11 +97,12 @@ class ElasticsearchSearchService extends SearchServiceAbstract implements EventS
      * @param Elastica_Client $client
      *   The Elastica client.
      *
-     * @return ElasticaSearchService
+     * @return ElasticsearchService
      */
     public function setClient(Elastica_Client $client)
     {
-        return $this->_client;
+        $this->_client = $client;
+        return $this;
     }
 
     /**
@@ -121,11 +121,12 @@ class ElasticsearchSearchService extends SearchServiceAbstract implements EventS
      * @param string $index
      *   The active index.
      *
-     * @return ElasticaSearchService
+     * @return ElasticsearchService
      */
     public function setActiveIndex($index)
     {
-        return $this->_activeIndex;
+        $this->_activeIndex = $index;
+        return $this;
     }
 
     /**
@@ -141,11 +142,11 @@ class ElasticsearchSearchService extends SearchServiceAbstract implements EventS
     /**
      * Overrides Search::Framework::SearchServiceAbstract::getDocument().
      *
-     * @return SolariumIndexDocument
+     * @return ElasticsearchIndexDocument
      */
     public function newDocument()
     {
-        return new ElasticaIndexDocument($this);
+        return new ElasticsearchIndexDocument($this);
     }
 
     /**
@@ -192,20 +193,10 @@ class ElasticsearchSearchService extends SearchServiceAbstract implements EventS
     }
 
     /**
-     * Listener for the SearchEvents::COLLECTION_PRE_INDEX event.
-     *
-     * @param SearchCollectionEvent $event
-     */
-    public function preIndexCollection(SearchCollectionEvent $event)
-    {
-
-    }
-
-    /**
      * Implements Search::Framework::SearchServiceAbstract::indexDocument().
      *
      * @param SearchCollectionAbstract $collection
-     * @param SolariumIndexDocument $document
+     * @param ElasticsearchIndexDocument $document
      */
     public function indexDocument(SearchCollectionAbstract $collection, SearchIndexDocument $document)
     {
