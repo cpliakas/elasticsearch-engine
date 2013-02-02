@@ -1,12 +1,12 @@
 <?php
 
 /**
- * Elastica search server for the Search Framework library.
+ * Elasticservice search service for the Search Framework library.
  *
  * @license http://www.gnu.org/licenses/lgpl-3.0.txt
  */
 
-namespace Search\Server\Elastica;
+namespace Search\Service\Elasticsearch;
 
 use Search\Framework\SearchIndexDocument;
 

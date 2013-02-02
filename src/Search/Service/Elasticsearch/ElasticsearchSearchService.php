@@ -1,13 +1,12 @@
 <?php
 
 /**
- * Elastica search server for the Search Framework library.
+ * Elasticsearch search service for the Search Framework library.
  *
  * @license http://www.gnu.org/licenses/lgpl-3.0.txt
  */
 
-namespace Search\Server\Elastica;
-
+namespace Search\Service\Elasticsearch;
 
 use Elastica_Client;
 use Elastica_Document;
@@ -16,15 +15,15 @@ use Elastica_Type_Mapping;
 use Search\Framework\Event\SearchCollectionEvent;
 use Search\Framework\SearchCollectionAbstract;
 use Search\Framework\SearchEvents;
-use Search\Framework\SearchServerAbstract;
+use Search\Framework\SearchServiceAbstract;
 use Search\Framework\SearchIndexDocument;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
- * Integrates the Solarium library with the Search Framework.
+ * Provides an Elasticsearch service by using the Elastica library.
  */
-class ElasticaSearchServer extends SearchServerAbstract implements EventSubscriberInterface
+class ElasticsearchSearchService extends SearchServiceAbstract implements EventSubscriberInterface
 {
     /**
      * The Elastica client interacting with the server.
@@ -48,7 +47,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     protected $_activeIndex;
 
     /**
-     * Instantiates a ElasticaSearchServer object or sets it.
+     * Instantiates a ElasticaSearchService object or sets it.
      *
      * @param array|Elastica_Client $options
      *   The populated Elastica client object, or an array of configuration
@@ -99,7 +98,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
      * @param Elastica_Client $client
      *   The Elastica client.
      *
-     * @return ElasticaSearchServer
+     * @return ElasticaSearchService
      */
     public function setClient(Elastica_Client $client)
     {
@@ -122,7 +121,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
      * @param string $index
      *   The active index.
      *
-     * @return ElasticaSearchServer
+     * @return ElasticaSearchService
      */
     public function setActiveIndex($index)
     {
@@ -140,9 +139,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     }
 
     /**
-     * Overrides Search::Server::SearchServerAbstract::getDocument().
-     *
-     * Returns an Elastica specific search index document object.
+     * Overrides Search::Framework::SearchServiceAbstract::getDocument().
      *
      * @return SolariumIndexDocument
      */
@@ -152,7 +149,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     }
 
     /**
-     * Implements Search::Server::SearchServerAbstract::createIndex().
+     * Implements Search::Framework::SearchServiceAbstract::createIndex().
      */
     public function createIndex($name, array $options = array())
     {
@@ -205,7 +202,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     }
 
     /**
-     * Implements Search::Server::SearchServerAbstract::indexDocument().
+     * Implements Search::Framework::SearchServiceAbstract::indexDocument().
      *
      * @param SearchCollectionAbstract $collection
      * @param SolariumIndexDocument $document
@@ -241,7 +238,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     }
 
     /**
-     * Implements Search::Server::SearchServerAbstract::search().
+     * Implements Search::Framework::SearchServiceAbstract::search().
      *
      * @return Elastica_ResultSet
      */
@@ -252,7 +249,7 @@ class ElasticaSearchServer extends SearchServerAbstract implements EventSubscrib
     }
 
     /**
-     * Implements Search::Server::SearchServerAbstract::delete().
+     * Implements Search::Framework::SearchServiceAbstract::delete().
      *
      * @return Elastica_Response Response object
      */
