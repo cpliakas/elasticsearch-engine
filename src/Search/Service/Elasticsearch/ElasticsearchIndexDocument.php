@@ -15,7 +15,7 @@ use Search\Framework\SearchIndexDocument;
  *
  * This object adds Lucene specific properties, such as document boosting.
  */
-class ElasticaIndexDocument extends SearchIndexDocument
+class ElasticsearchIndexDocument extends SearchIndexDocument
 {
     /**
      * The document level boost set for this document.
@@ -28,7 +28,7 @@ class ElasticaIndexDocument extends SearchIndexDocument
      * @param float $boost
      *   The boost factor applied to the field.
      *
-     * @return ElasticaIndexDocument
+     * @return ElasticsearchIndexDocument
      */
     public function setBoost($boost)
     {
