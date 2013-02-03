@@ -47,35 +47,26 @@ class ElasticsearchService extends SearchServiceAbstract implements EventSubscri
     protected $_activeIndex;
 
     /**
-     * Instantiates a ElasticaSearchService object or sets it.
+     * Overrides Search::Framework::SearchServiceAbstract::init().
      *
-     * @param array|Elastica_Client $options
-     *   The populated Elastica client object, or an array of configuration
-     *   options used to instantiate a new client object.
-     * @param EventDispatcher|null $dispatcher
-     *   Optionally pass a dispatcher object that was instantiated elsewhere in
-     *   the application. This is useful in cases where a global dispatcher is
-     *   being used.
-     *
-     * @throws InvalidArgumentException
+     * Sets the Solarium client, registers listeners.
      */
-    public function __construct($options, $dispatcher = null)
+    public function init(array $endpoints, array $options)
     {
-        if (empty($options['index'])) {
-            throw new \InvalidArgumentException('The "index" option is required.');
+        // @see http://ruflin.github.com/Elastica/#section-connect
+        $client_options = array('servers' => array());
+        foreach ($endpoints as $endpoint) {
+            $client_options['servers'][] = array(
+                'host' => $endpoint->getHost(),
+                'port' => $endpoint->getPort(),
+            );
+            $this->_activeIndex = $endpoint->getIndex();
         }
 
-        $this->_activeIndex = $options['index'];
-        unset($options['index']);
-
-        if ($options instanceof Elastica_Client) {
-            $this->_client = $options;
+        if (count($client_options['servers']) < 2) {
+            $this->_client = new Elastica_Client($client_options['servers'][0]);
         } else {
-            $this->_client = new Elastica_Client($options);
-        }
-
-        if ($dispatcher instanceof EventDispatcher) {
-            $this->setDispatcher($dispatcher);
+            $this->_client = new Elastica_Client($client_options);
         }
 
         $this->getDispatcher()->addSubscriber($this);
