@@ -17,13 +17,11 @@ use Search\Framework\SearchCollectionAbstract;
 use Search\Framework\SearchEvents;
 use Search\Framework\SearchServiceAbstract;
 use Search\Framework\SearchIndexDocument;
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Provides an Elasticsearch service by using the Elastica library.
  */
-class ElasticsearchService extends SearchServiceAbstract implements EventSubscriberInterface
+class ElasticsearchService extends SearchServiceAbstract
 {
     /**
      * The Elastica client interacting with the server.
@@ -68,12 +66,10 @@ class ElasticsearchService extends SearchServiceAbstract implements EventSubscri
         } else {
             $this->_client = new Elastica_Client($client_options);
         }
-
-        $this->getDispatcher()->addSubscriber($this);
     }
 
     /**
-     * Implements EventSubscriberInterface::getSubscribedEvents().
+     * Overrides SearchServiceAbstract::getSubscribedEvents().
      */
     public static function getSubscribedEvents()
     {
@@ -204,7 +200,7 @@ class ElasticsearchService extends SearchServiceAbstract implements EventSubscri
 
         $native_doc = new Elastica_Document(null, $index_doc);
         $native_doc->setIndex($this->_activeIndex);
-        $native_doc->setType('item');
+        $native_doc->setType($collection->getType());
         $this->_documents[] = $native_doc;
     }
 
