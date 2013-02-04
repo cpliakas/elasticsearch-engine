@@ -23,6 +23,9 @@ use Search\Framework\SearchIndexDocument;
  */
 class ElasticsearchService extends SearchServiceAbstract
 {
+
+    protected static $_id = 'elasticsearch';
+
     /**
      * The Elastica client interacting with the server.
      *
@@ -176,7 +179,6 @@ class ElasticsearchService extends SearchServiceAbstract
             $mapping->setProperties($properties);
             $mapping->send();
         }
-
     }
 
     /**
