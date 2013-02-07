@@ -12,7 +12,7 @@ use Elastica_Client;
 use Elastica_Document;
 use Elastica_Search;
 use Elastica_Type_Mapping;
-use Search\Framework\Event\SearchCollectionEvent;
+use Search\Framework\Event\SearchServiceEvent;
 use Search\Framework\SearchCollectionAbstract;
 use Search\Framework\SearchEvents;
 use Search\Framework\SearchServiceAbstract;
@@ -77,7 +77,7 @@ class ElasticsearchService extends SearchServiceAbstract
     public static function getSubscribedEvents()
     {
         return array(
-            SearchEvents::COLLECTION_POST_INDEX => array('postIndexCollection'),
+            SearchEvents::SERVICE_POST_INDEX => array('postIndex'),
         );
     }
 
@@ -207,11 +207,11 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Listener for the SearchEvents::COLLECTION_POST_INDEX event.
+     * Listener for the SearchEvents::SERVICE_POST_INDEX event.
      *
      * @param SearchCollectionEvent $event
      */
-    public function postIndexCollection(SearchCollectionEvent $event)
+    public function postIndex(SearchServiceEvent $event)
     {
         $this->_client->addDocuments($this->_documents);
         $this->_client->getIndex($this->_activeIndex)->refresh();

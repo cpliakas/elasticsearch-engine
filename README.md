@@ -20,7 +20,7 @@ $elasticsearch = new ElasticsearchService($endpoint);
 // Associate the collection with the Solr server.
 $drupal_planet = new FeedCollection();
 $drupal_planet->setFeedUrl('http://drupal.org/planet/rss.xml');
-$elasticsearch->addCollection($drupal_planet);
+$elasticsearch->attachCollection($drupal_planet);
 
 // Create the index and put the mappings.
 $elasticsearch->createIndex();
