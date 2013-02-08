@@ -12,11 +12,13 @@ use Elastica_Client;
 use Elastica_Document;
 use Elastica_Search;
 use Elastica_Type_Mapping;
+use Search\Framework\Event\SearchFieldEvent;
 use Search\Framework\Event\SearchServiceEvent;
 use Search\Framework\SearchCollectionAbstract;
 use Search\Framework\SearchEvents;
-use Search\Framework\SearchServiceAbstract;
 use Search\Framework\SearchIndexDocument;
+use Search\Framework\SearchSchemaField;
+use Search\Framework\SearchServiceAbstract;
 
 /**
  * Provides an Elasticsearch service by using the Elastica library.
@@ -48,7 +50,7 @@ class ElasticsearchService extends SearchServiceAbstract
     protected $_activeIndex;
 
     /**
-     * Overrides Search::Framework::SearchServiceAbstract::init().
+     * Implements SearchServiceAbstract::init().
      *
      * Sets the Solarium client, registers listeners.
      */
@@ -78,6 +80,7 @@ class ElasticsearchService extends SearchServiceAbstract
     {
         return array(
             SearchEvents::SERVICE_POST_INDEX => array('postIndex'),
+            SearchEvents::FIELD_NORMALIZE => array('normalizeField'),
         );
     }
 
@@ -130,7 +133,7 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Overrides Search::Framework::SearchServiceAbstract::getDocument().
+     * Overrides SearchServiceAbstract::getDocument().
      *
      * @return ElasticsearchIndexDocument
      */
@@ -140,7 +143,7 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Implements Search::Framework::SearchServiceAbstract::createIndex().
+     * Implements SearchServiceAbstract::createIndex().
      */
     public function createIndex($name, array $options = array())
     {
@@ -164,16 +167,56 @@ class ElasticsearchService extends SearchServiceAbstract
             foreach ($schema as $field_id => $field) {
                 $field_name = $field->getName();
 
-                // @todo Implement types.
-                $properties[$field_name]['type'] = 'string';
+                // Converts the Search Framework types to Elasticsearch types.
+                // @todo Break this down into something more pluggable.
+                // @see http://www.elasticsearch.org/guide/reference/mapping/core-types.html
+                switch ($field->getType()) {
 
-                if (!$field->isIndexed()) {
-                    $properties[$field_name]['index'] = 'no';
+                    case SearchSchemaField::TYPE_STRING;
+                        $properties[$field_name]['type'] = 'string';
+                        if ($field->isIndexed()) {
+                            $index_property = ($field->isAnalyzed()) ? 'analyzed' : 'not_analyzed';
+                            $properties[$field_name]['index'] = $index_property;
+                        } else {
+                            $properties[$field_name]['index'] = 'no';
+                        }
+                        break;
+
+                    case SearchSchemaField::TYPE_INTEGER;
+                        // Use size as type, expects integer, byte, short, long.
+                        $size = $field->getSize();
+                        $type_property = ($size) ? $size : 'integer';
+                        $properties[$field_name]['type'] = $type_property;
+                        break;
+
+                    case SearchSchemaField::TYPE_DECIMAL;
+                        // Use size as type, expects float, double
+                        $size = $field->getSize();
+                        $type_property = ($size) ? $size : 'float';
+                        $properties[$field_name]['type'] = $type_property;
+                        break;
+
+                    case SearchSchemaField::TYPE_DATE;
+                        // Use size as type, expects float, double
+                        $properties[$field_name]['type'] = 'date';
+                        break;
+
+                    case SearchSchemaField::TYPE_BOOLEAN;
+                        // Use size as type, expects float, double
+                        $properties[$field_name]['type'] = 'boolean';
+                        break;
+
+                    case SearchSchemaField::TYPE_BINARY;
+                        $properties[$field_name]['type'] = 'binary';
+                        break;
+
+                    default:
+                        $properties[$field_name]['type'] = 'string';
+                        $properties[$field_name]['index'] = 'not_analyzed';
+                        break;
                 }
 
-                if (!$field->isStored()) {
-                    $properties[$field_name]['store'] = true;
-                }
+                $properties[$field_name]['store'] = $field->isStored();
             }
 
             $mapping->setProperties($properties);
@@ -182,7 +225,24 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Implements Search::Framework::SearchServiceAbstract::indexDocument().
+     * Listener for the SearchEvents::FIELD_NORMALIZE event.
+     */
+    public function normalizeField(SearchFieldEvent $event)
+    {
+        // Refer to https://github.com/cpliakas/search-framework/issues/26.
+        // This is nasty, but it works. Hopefully it won't be required soon.
+        $schema = $this->getSchema();
+        $field = $event->getField();
+        switch ($schema->getField($field->getId())->getType()) {
+            case SearchSchemaField::TYPE_DATE:
+                $timestamp = strtotime($field);
+                $event->setValue(date('Y-m-d\TH:i:s\Z', $timestamp));
+                break;
+        }
+    }
+
+    /**
+     * Implements SearchServiceAbstract::indexDocument().
      *
      * @param SearchCollectionAbstract $collection
      * @param ElasticsearchIndexDocument $document
@@ -218,7 +278,7 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Implements Search::Framework::SearchServiceAbstract::search().
+     * Implements SearchServiceAbstract::search().
      *
      * @return Elastica_ResultSet
      */
@@ -229,7 +289,7 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Implements Search::Framework::SearchServiceAbstract::delete().
+     * Implements SearchServiceAbstract::delete().
      *
      * @return Elastica_Response Response object
      */
