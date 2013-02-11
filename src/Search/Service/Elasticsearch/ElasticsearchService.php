@@ -12,7 +12,6 @@ use Elastica_Client;
 use Elastica_Document;
 use Elastica_Search;
 use Elastica_Type_Mapping;
-use Search\Framework\Event\SearchFieldEvent;
 use Search\Framework\Event\SearchServiceEvent;
 use Search\Framework\SearchCollectionAbstract;
 use Search\Framework\SearchEvents;
@@ -52,25 +51,27 @@ class ElasticsearchService extends SearchServiceAbstract
     /**
      * Implements SearchServiceAbstract::init().
      *
-     * Sets the Solarium client, registers listeners.
+     * Instantiates the Elastica client.
      */
-    public function init(array $endpoints, array $options)
+    public function init(array $endpoints)
     {
         // @see http://ruflin.github.com/Elastica/#section-connect
-        $client_options = array('servers' => array());
+        $options = array('servers' => array());
         foreach ($endpoints as $endpoint) {
-            $client_options['servers'][] = array(
+            $options['servers'][] = array(
                 'host' => $endpoint->getHost(),
                 'port' => $endpoint->getPort(),
             );
             $this->_activeIndex = $endpoint->getIndex();
         }
 
-        if (count($client_options['servers']) < 2) {
-            $this->_client = new Elastica_Client($client_options['servers'][0]);
+        if (count($options['servers']) < 2) {
+            $this->_client = new Elastica_Client($options['servers'][0]);
         } else {
-            $this->_client = new Elastica_Client($client_options);
+            $this->_client = new Elastica_Client($options);
         }
+
+        $this->attachNormalizer(SearchSchemaField::TYPE_DATE, new ElasticsearchDateNormalizer());
     }
 
     /**
@@ -80,7 +81,6 @@ class ElasticsearchService extends SearchServiceAbstract
     {
         return array(
             SearchEvents::SERVICE_POST_INDEX => array('postIndex'),
-            SearchEvents::FIELD_NORMALIZE => array('normalizeField'),
         );
     }
 
@@ -221,23 +221,6 @@ class ElasticsearchService extends SearchServiceAbstract
 
             $mapping->setProperties($properties);
             $mapping->send();
-        }
-    }
-
-    /**
-     * Listener for the SearchEvents::FIELD_NORMALIZE event.
-     */
-    public function normalizeField(SearchFieldEvent $event)
-    {
-        // Refer to https://github.com/cpliakas/search-framework/issues/26.
-        // This is nasty, but it works. Hopefully it won't be required soon.
-        $schema = $this->getSchema();
-        $field = $event->getField();
-        switch ($schema->getField($field->getId())->getType()) {
-            case SearchSchemaField::TYPE_DATE:
-                $timestamp = strtotime($field);
-                $event->setValue(date('Y-m-d\TH:i:s\Z', $timestamp));
-                break;
         }
     }
 
