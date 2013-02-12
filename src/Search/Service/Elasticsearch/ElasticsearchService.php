@@ -25,7 +25,7 @@ use Search\Framework\SearchServiceAbstract;
 class ElasticsearchService extends SearchServiceAbstract
 {
 
-    protected static $_id = 'elasticsearch';
+    protected static $_configBasename = 'elasticsearch';
 
     /**
      * The Elastica client interacting with the server.
