@@ -6,16 +6,16 @@
  * @license http://www.gnu.org/licenses/lgpl-3.0.txt
  */
 
-namespace Search\Service\Elasticsearch;
+namespace Search\Engine\Elasticsearch;
 
-use Search\Framework\SearchIndexDocument;
+use Search\Framework\IndexDocument;
 
 /**
  * Models a document containing the source data being indexed.
  *
  * This object adds Lucene specific properties, such as document boosting.
  */
-class ElasticsearchIndexDocument extends SearchIndexDocument
+class ElasticsearchIndexDocument extends IndexDocument
 {
     /**
      * The document level boost set for this document.

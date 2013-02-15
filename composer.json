@@ -1,7 +1,7 @@
 {
-    "name": "cpliakas/elasticsearch-service",
+    "name": "cpliakas/elasticsearch-engine",
     "type": "library",
-    "description": "Provides an Elasticsearch service to the Search Framework library by leveraging the Elastica project.",
+    "description": "Provides an Elasticsearch engine to the Search Framework library by leveraging the Elastica project.",
     "keywords": ["search", "search-framework", "elasticsearch", "elastica"],
     "homepage": "https://github.com/cpliakas/elasticsearch-service",
     "license": "LGPL-3.0",
@@ -17,7 +17,7 @@
     },
     "autoload": {
         "psr-0": {
-            "Search\\Service\\Elasticsearch": "src/"
+            "Search\\Engine\\Elasticsearch": "src/"
         }
     }
 }

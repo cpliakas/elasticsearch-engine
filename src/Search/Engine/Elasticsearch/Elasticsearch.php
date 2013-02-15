@@ -6,27 +6,26 @@
  * @license http://www.gnu.org/licenses/lgpl-3.0.txt
  */
 
-namespace Search\Service\Elasticsearch;
+namespace Search\Engine\Elasticsearch;
 
 use Elastica_Client;
 use Elastica_Document;
 use Elastica_Search;
 use Elastica_Type_Mapping;
-use Search\Framework\Event\SearchServiceEvent;
-use Search\Framework\SearchCollectionAbstract;
+use Search\Framework\Event\SearchEngineEvent;
+use Search\Framework\CollectionAbstract;
+use Search\Framework\DateNormalizer;
+use Search\Framework\IndexDocument;
+use Search\Framework\Indexer;
+use Search\Framework\SchemaField;
+use Search\Framework\SearchEngineAbstract;
 use Search\Framework\SearchEvents;
-use Search\Framework\SearchIndexDocument;
-use Search\Framework\SearchSchemaField;
-use Search\Framework\SearchServiceAbstract;
 
 /**
  * Provides an Elasticsearch service by using the Elastica library.
  */
-class ElasticsearchService extends SearchServiceAbstract
+class Elasticsearch extends SearchEngineAbstract
 {
-
-    protected static $_configBasename = 'elasticsearch';
-
     /**
      * The Elastica client interacting with the server.
      *
@@ -39,7 +38,7 @@ class ElasticsearchService extends SearchServiceAbstract
      *
      * @var array
      */
-    protected $_documents;
+    protected $_documents = array();
 
     /**
      * The active index being written to / deleted from.
@@ -49,14 +48,16 @@ class ElasticsearchService extends SearchServiceAbstract
     protected $_activeIndex;
 
     /**
-     * Implements SearchServiceAbstract::init().
+     * Implements SearchEngineAbstract::init().
      *
      * Instantiates the Elastica client.
      */
-    public function init(array $endpoints)
+    public function init(array $endpoints, array $options)
     {
+        // Don't allow the "servers" option to be passed via runtime.
+        $options['servers'] = array();
+
         // @see http://ruflin.github.com/Elastica/#section-connect
-        $options = array('servers' => array());
         foreach ($endpoints as $endpoint) {
             $options['servers'][] = array(
                 'host' => $endpoint->getHost(),
@@ -71,16 +72,16 @@ class ElasticsearchService extends SearchServiceAbstract
             $this->_client = new Elastica_Client($options);
         }
 
-        $this->attachNormalizer(SearchSchemaField::TYPE_DATE, new ElasticsearchDateNormalizer());
+        $this->attachNormalizer(SchemaField::TYPE_DATE, new DateNormalizer());
     }
 
     /**
-     * Overrides SearchServiceAbstract::getSubscribedEvents().
+     * Overrides SearchEngineAbstract::getSubscribedEvents().
      */
     public static function getSubscribedEvents()
     {
         return array(
-            SearchEvents::SERVICE_POST_INDEX => array('postIndex'),
+            SearchEvents::SEARCH_ENGINE_POST_INDEX => array('postIndex'),
         );
     }
 
@@ -90,7 +91,7 @@ class ElasticsearchService extends SearchServiceAbstract
      * @param Elastica_Client $client
      *   The Elastica client.
      *
-     * @return ElasticsearchService
+     * @return Elasticsearch
      */
     public function setClient(Elastica_Client $client)
     {
@@ -114,7 +115,7 @@ class ElasticsearchService extends SearchServiceAbstract
      * @param string $index
      *   The active index.
      *
-     * @return ElasticsearchService
+     * @return Elasticsearch
      */
     public function setActiveIndex($index)
     {
@@ -133,31 +134,31 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Overrides SearchServiceAbstract::getDocument().
+     * Overrides SearchEngineAbstract::getDocument().
      *
-     * @return ElasticsearchIndexDocument
+     * @return IndexDocument
      */
-    public function newDocument()
+    public function newDocument(Indexer $indexer)
     {
-        return new ElasticsearchIndexDocument($this);
+        return new ElasticsearchIndexDocument($indexer);
     }
 
     /**
-     * Implements SearchServiceAbstract::createIndex().
+     * Implements SearchEngineAbstract::createIndex().
      */
-    public function createIndex($name, array $options = array())
+    public function createIndex(Indexer $indexer, array $options = array())
     {
         // Create the index.
         $options += array(
             'number_of_shards' => 4,
             'number_of_replicas' => 1,
         );
-        $index = $this->_client->getIndex($name);
+        $index = $this->_client->getIndex($this->_activeIndex);
         $index->create($options, true);
 
         // Put the mappings for each collection.
-        foreach ($this->_collections as $collection) {
-            $schema = $collection->getSchema();
+        foreach ($indexer->getCollections() as $collection) {
+            $schema = $indexer->loadCollectionSchema($collection);
 
             $mapping = new Elastica_Type_Mapping();
             $type = $index->getType($collection->getType());
@@ -172,7 +173,7 @@ class ElasticsearchService extends SearchServiceAbstract
                 // @see http://www.elasticsearch.org/guide/reference/mapping/core-types.html
                 switch ($field->getType()) {
 
-                    case SearchSchemaField::TYPE_STRING;
+                    case SchemaField::TYPE_STRING;
                         $properties[$field_name]['type'] = 'string';
                         if ($field->isIndexed()) {
                             $index_property = ($field->isAnalyzed()) ? 'analyzed' : 'not_analyzed';
@@ -182,31 +183,31 @@ class ElasticsearchService extends SearchServiceAbstract
                         }
                         break;
 
-                    case SearchSchemaField::TYPE_INTEGER;
+                    case SchemaField::TYPE_INTEGER;
                         // Use size as type, expects integer, byte, short, long.
                         $size = $field->getSize();
                         $type_property = ($size) ? $size : 'integer';
                         $properties[$field_name]['type'] = $type_property;
                         break;
 
-                    case SearchSchemaField::TYPE_DECIMAL;
+                    case SchemaField::TYPE_DECIMAL;
                         // Use size as type, expects float, double
                         $size = $field->getSize();
                         $type_property = ($size) ? $size : 'float';
                         $properties[$field_name]['type'] = $type_property;
                         break;
 
-                    case SearchSchemaField::TYPE_DATE;
+                    case SchemaField::TYPE_DATE;
                         // Use size as type, expects float, double
                         $properties[$field_name]['type'] = 'date';
                         break;
 
-                    case SearchSchemaField::TYPE_BOOLEAN;
+                    case SchemaField::TYPE_BOOLEAN;
                         // Use size as type, expects float, double
                         $properties[$field_name]['type'] = 'boolean';
                         break;
 
-                    case SearchSchemaField::TYPE_BINARY;
+                    case SchemaField::TYPE_BINARY;
                         $properties[$field_name]['type'] = 'binary';
                         break;
 
@@ -225,12 +226,12 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Implements SearchServiceAbstract::indexDocument().
+     * Implements SearchEngineAbstract::indexDocument().
      *
-     * @param SearchCollectionAbstract $collection
-     * @param ElasticsearchIndexDocument $document
+     * @param CollectionAbstract $collection
+     * @param IndexDocument $document
      */
-    public function indexDocument(SearchCollectionAbstract $collection, SearchIndexDocument $document)
+    public function indexDocument(CollectionAbstract $collection, IndexDocument $document)
     {
         $index_doc = array();
 
@@ -254,14 +255,16 @@ class ElasticsearchService extends SearchServiceAbstract
      *
      * @param SearchCollectionEvent $event
      */
-    public function postIndex(SearchServiceEvent $event)
+    public function postIndex(SearchEngineEvent $event)
     {
-        $this->_client->addDocuments($this->_documents);
-        $this->_client->getIndex($this->_activeIndex)->refresh();
+        if ($this->_documents) {
+            $this->_client->addDocuments($this->_documents);
+            $this->_client->getIndex($this->_activeIndex)->refresh();
+        }
     }
 
     /**
-     * Implements SearchServiceAbstract::search().
+     * Implements SearchEngineAbstract::search().
      *
      * @return Elastica_ResultSet
      */
@@ -272,7 +275,7 @@ class ElasticsearchService extends SearchServiceAbstract
     }
 
     /**
-     * Implements SearchServiceAbstract::delete().
+     * Implements SearchEngineAbstract::delete().
      *
      * @return Elastica_Response Response object
      */
