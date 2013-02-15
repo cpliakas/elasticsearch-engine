@@ -3,7 +3,7 @@
     "type": "library",
     "description": "Provides an Elasticsearch engine to the Search Framework library by leveraging the Elastica project.",
     "keywords": ["search", "search-framework", "elasticsearch", "elastica"],
-    "homepage": "https://github.com/cpliakas/elasticsearch-service",
+    "homepage": "https://github.com/cpliakas/elasticsearch-engine",
     "license": "LGPL-3.0",
     "authors": [
         {
