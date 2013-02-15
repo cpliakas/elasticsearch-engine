@@ -136,7 +136,7 @@ class Elasticsearch extends SearchEngineAbstract
     /**
      * Overrides SearchEngineAbstract::getDocument().
      *
-     * @return IndexDocument
+     * @return ElasticsearchIndexDocument
      */
     public function newDocument(Indexer $indexer)
     {
